@@ -62,7 +62,7 @@ The pictures below show how the signal looks on our testing equipment before and
 
 ### Blink Detection
 ![Blink Thresholding](assets/signal_quality/eog_blink_thresholding.png)
-*Figure 3: EOG signal in MATLAB. The red line shows our program easily detecting when the user blinks.*
+*Figure 3: Real-time EOG signal acquisition in MATLAB displaying threshold-based blink detection.*
 
 ---
 

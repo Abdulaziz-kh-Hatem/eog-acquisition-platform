@@ -1,0 +1,9 @@
+# Manuscript draft & office documents
+*.docx
+*.doc
+~$*
+*.tmp
+
+# Operating system files
+Thumbs.db
+.DS_Store

@@ -7,7 +7,7 @@
 [![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-success.svg)](#how-to-run)
 
 **Peer-Reviewed Publication**  
-Authors: Abdulaziz K.A. Hatem, Ahmed M.A.S. AlKadhi, Mohammed A A. Qasem, Khaled A.M. Farhan, and Nasr Kaid Ali AL-Audi  
+Authors: Abdulaziz K.A. Hatem, Ahmed M.A.S. AlKadhi, Mohammed A.A. Qasem, Khaled A.M. Farhan, and Nasr Kaid Ali AL-Audi  
 *Electrotehnică, Electronică, Automatică (EEA)*, 2026, vol. 74, no. 2, pp. 130–137. ISSN 1582-5175.  
 Department of Biomedical Engineering, Faculty of Engineering, University of Science and Technology, Aden, Yemen.
 
@@ -98,7 +98,8 @@ The Arduino Uno streams 10-bit ADC samples at $250\,\text{Hz}$ ($115200\,\text{b
 
 ---
 
-## How to Run
+## Quick Start / How to Run
+<a id="how-to-run"></a>
 
 ### 1. Arduino Firmware
 - Connect the analog circuit output to pin `A0` of an Arduino Uno.
@@ -109,9 +110,9 @@ The Arduino Uno streams 10-bit ADC samples at $250\,\text{Hz}$ ($115200\,\text{b
 - Open MATLAB (R2020b or later).
 - In [`src/matlab/eog_realtime_acquisition.m`](src/matlab/eog_realtime_acquisition.m), configure your Arduino COM port:
   ```matlab
-  port = 'COM3'; % Adjust to your system's serial port
+  arduinoPort = 'COM3'; % Adjust to your system's serial port (e.g., 'COM3', 'COM7')
   ```
-- Run the script to start live acquisition, real-time filtering, and the interactive assistive interface.
+- Run the script to start live acquisition, real-time filtering, and the interactive assistive interface. *(Note: The HC-05 Bluetooth wheelchair connection is optional; if unattached, the software automatically runs in standalone acquisition and virtual keyboard mode).*
 
 ### 3. Running Automated Tests
 The repository includes an automated DSP and finite-state machine (FSM) test suite:
@@ -168,7 +169,7 @@ If you use this circuit design, firmware, or signal processing pipeline, please 
 ```bibtex
 @article{hatem2026eog,
   title   = {Design and Development of a Low-Cost Electronic Platform for Electrooculography Signals Acquisition},
-  author  = {Hatem, Abdulaziz K.A. and AlKadhi, Ahmed M.A.S. and Qasem, Mohammed A A. and Farhan, Khaled A.M. and AL-Audi, Nasr Kaid Ali},
+  author  = {Hatem, Abdulaziz K.A. and AlKadhi, Ahmed M.A.S. and Qasem, Mohammed A.A. and Farhan, Khaled A.M. and AL-Audi, Nasr Kaid Ali},
   journal = {Electrotehnic\u{a}, Electronic\u{a}, Automatic\u{a} (EEA)},
   volume  = {74},
   number  = {2},
@@ -179,4 +180,4 @@ If you use this circuit design, firmware, or signal processing pipeline, please 
 }
 ```
 
-> Abdulaziz K.A. Hatem, Ahmed M.A.S. AlKadhi, Mohammed A A. Qasem, Khaled A.M. Farhan, Nasr Kaid Ali AL-Audi, *"Design and Development of a Low-Cost Electronic Platform for Electrooculography Signals Acquisition"*, **Electrotehnică, Electronică, Automatică (EEA)**, 2026, vol. 74, no. 2, pp. 130–137. ISSN 1582-5175. DOI: [10.46904/eea.26.74.2.1108016](https://doi.org/10.46904/eea.26.74.2.1108016).
+> Abdulaziz K.A. Hatem, Ahmed M.A.S. AlKadhi, Mohammed A.A. Qasem, Khaled A.M. Farhan, Nasr Kaid Ali AL-Audi, *"Design and Development of a Low-Cost Electronic Platform for Electrooculography Signals Acquisition"*, **Electrotehnică, Electronică, Automatică (EEA)**, 2026, vol. 74, no. 2, pp. 130–137. ISSN 1582-5175. DOI: [10.46904/eea.26.74.2.1108016](https://doi.org/10.46904/eea.26.74.2.1108016).

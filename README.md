@@ -187,11 +187,33 @@ $$\text{SNR}\,(\text{dB}) = 10 \log_{10} \left( \frac{\sigma_{\text{signal}}^2}{
 | **Notch Filtering** | 50 Hz twin-T / active band-reject | Eliminates AC powerline mains hum |
 | **Total Analog Gain** | Up to $\sim 20,000\times$ (adjustable) | Converts $\mu\text{V}$ ocular signals to $\approx 2\,\text{V}_{pp}$ |
 | **DC Level Shifting** | Precision potentiometer circuit | Shifts bipolar signal into unipolar $0\,\text{V} - 5\,\text{V}$ for ADC |
-| **ADC / Microcontroller** | Arduino Uno (ATmega328P) | 10-bit resolution ($4.88\,\text{mV}/\text{LSB}$), $f_s \approx 50\,\text{Hz}$ |
+| **ADC / Microcontroller** | Arduino Uno (ATmega328P) | 10-bit resolution ($4.88\,\text{mV}/\text{LSB}$), $f_s = 250\,\text{Hz}$ non-blocking ($T = 4000\,\mu\text{s}$) |
 | **Baud Rate** | 115200 bps | Synchronized UART serial streaming |
-| **Digital DSP** | MATLAB R2024a | 3-pt smoothing MA, 150-pt baseline correction MA |
+| **Digital DSP** | MATLAB R2024a | 3-pt smoothing MA, 150-pt baseline drift MA, 50 Hz Butterworth notch |
 | **Power Supply** | Dual $\pm 9\,\text{V}$ batteries | Total galvanic isolation from AC power grid |
 | **Total Hardware Cost** | **< $15 USD** | Accessible for developing countries & educational labs |
+
+---
+
+## Software & Firmware Implementation
+
+The acquisition and signal processing pipeline consists of embedded firmware for the Arduino Uno and MATLAB processing scripts:
+
+### 1. Embedded Firmware (`src/arduino/`)
+- **`eog_acquisition.ino`**: Configures the ATmega328P 10-bit ADC to sample the conditioned biopotential on analog channel `A0` at a deterministic $250\,\text{Hz}$ sampling frequency ($T = 4000\,\mu\text{s}$). Timing is governed via a non-blocking `micros()` loop to prevent cumulative timer jitter, streaming raw integer ADC counts ($0 - 1023$) over USB-serial at $115200\,\text{bps}$.
+
+### 2. Real-Time Acquisition & HMI (`src/matlab/eog_realtime_acquisition.m`)
+- **Real-Time DSP Chain**: Continuously ingests the serial stream, applies 3-sample moving average smoothing, subtracts dynamic baseline drift via a 150-sample moving average, filters $50\,\text{Hz}$ powerline mains interference using a 10th-order IIR Butterworth notch filter, and applies 7-sample post-smoothing.
+- **Dual-Threshold Event Discrimination**: Detects eye movements using an execution threshold ($+80\,\text{V}$ display scale, corresponding to $\approx 267\,\text{mV}$ at ADC and $\approx 100\,\mu\text{V}$ cornea-retinal potential) and recovery baseline threshold ($-50\,\text{V}$). Differentiates voluntary blinks ($< 915\,\text{ms}$) from sustained intentional gaze ($\ge 915\,\text{ms}$).
+- **Human-Machine Interface**: Implements dual control modes with an automated 4-blink safety toggle:
+  - *Wheelchair Navigation Mode*: Real-time state machine commanding Forward, Stop, Backward, and Rotation over Bluetooth telemetry.
+  - *Arabic Virtual Speller Mode*: 6-sector polar scanning keyboard enabling 28-letter Arabic text composition.
+
+### 3. Quantitative Analysis & Protocol Reproduction (`src/matlab/eog_signal_analysis.m`)
+- Evaluates the multi-phase experimental protocol (Baseline, Voluntary Blinks, Upward Gaze, Downward Gaze) to reproduce Table 1 statistical metrics ($V_{pp}$, variance, standard deviation, SNR) and publication figures (Figures 11–15).
+
+### 4. Automated DSP Test Suite (`tests/test_eog_pipeline.m`)
+- Unit test suite verifying filter stability, $50\,\text{Hz}$ attenuation, ADC voltage scaling, streaming state recursion, and Arabic keyboard layout coverage in MATLAB R2024a.
 
 ---
 
@@ -201,6 +223,16 @@ $$\text{SNR}\,(\text{dB}) = 10 \log_{10} \left( \frac{\sigma_{\text{signal}}^2}{
 eog-acquisition-platform/
 ├── README.md                                # Comprehensive scientific documentation
 ├── .gitignore                               # Clean repository filter rules
+├── src/
+│   ├── arduino/
+│   │   ├── eog_acquisition.ino              # Direct Arduino IDE sketch
+│   │   └── eog_acquisition/
+│   │       └── eog_acquisition.ino          # Standard sketch folder structure (250 Hz ADC sampling)
+│   └── matlab/
+│       ├── eog_realtime_acquisition.m       # Real-time 250 Hz serial acquisition, DSP filtering & GUI
+│       └── eog_signal_analysis.m            # Experimental protocol validation & Table 1 reproduction
+├── tests/
+│   └── test_eog_pipeline.m                  # DSP and FSM unit test suite
 └── assets/
     ├── hardware/
     │   ├── proteus_circuit_schematic.png    # Figure 1: Published Proteus circuit schematic

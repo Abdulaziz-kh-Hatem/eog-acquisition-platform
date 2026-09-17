@@ -1,170 +1,129 @@
-# Low-Cost Electronic Platform for Electrooculography (EOG) Signals Acquisition
+# Low-Cost EOG Acquisition Platform
 
 [![Published](https://img.shields.io/badge/Published-EEA%20Journal%202026-green.svg)](https://doi.org/10.46904/eea.26.74.2.1108016)
 [![DOI](https://img.shields.io/badge/DOI-10.46904%2Feea.26.74.2.1108016-blue.svg)](https://doi.org/10.46904/eea.26.74.2.1108016)
-[![Hardware](https://img.shields.io/badge/Hardware-Analog%20AFE%20%2B%20Arduino-orange.svg)](#hardware--circuit-summary)
-[![Signal-to-Noise](https://img.shields.io/badge/Max%20SNR-32.5%20dB-brightgreen.svg)](#matlab-dsp--signal-quality)
-[![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-success.svg)](#how-to-run)
+[![YouTube Demo](https://img.shields.io/badge/YouTube-Live%20Demo-red.svg)](https://youtu.be/ZO9QT6c9rzA)
 
-**Peer-Reviewed Publication**  
-Authors: Abdulaziz K.A. Hatem, Ahmed M.A.S. AlKadhi, Mohammed A.A. Qasem, Khaled A.M. Farhan, and Nasr Kaid Ali AL-Audi  
-*Electrotehnică, Electronică, Automatică (EEA)*, 2026, vol. 74, no. 2, pp. 130–137. ISSN 1582-5175.  
-Department of Biomedical Engineering, Faculty of Engineering, University of Science and Technology, Aden, Yemen.
+This repository contains the hardware circuit and software we developed to record eye movement signals (Electrooculography - EOG). We designed and built this low-cost system (< $15 USD) during our biomedical engineering undergraduate studies at the University of Science and Technology, Aden, Yemen.
 
----
+The platform detects vertical eye movements and blinks, serving as the hardware interface for our graduation project: an **eye-controlled smart wheelchair and Arabic virtual keyboard**.
 
-## Overview
-
-Electrooculography (EOG) records the standing electrical dipole of the human eye—the **cornea-retinal potential (CRP)**—which generates biopotentials between $50\,\mu\text{V}$ and $3500\,\mu\text{V}$. When the subject blinks or moves their eyes, this dipole shifts relative to surface electrodes, producing detectable voltage variations.
-
-This repository provides the complete open-source hardware and software implementation of our low-cost (< $15 USD) analog EOG acquisition platform. Designed as an undergraduate biomedical engineering graduation project and subsequently published in the *EEA Journal*, the system captures vertical eye movements and blinks to serve as the control interface for assistive technologies, such as a smart wheelchair and an Arabic virtual keyboard.
-
-> For full theoretical derivations, clinical protocols, and extensive multi-subject statistical tables, please consult our published paper:  
-> [DOI: 10.46904/eea.26.74.2.1108016](https://doi.org/10.46904/eea.26.74.2.1108016).
+The full clinical study, mathematical modeling, and theoretical derivations are published in the *EEA Journal* ([DOI: 10.46904/eea.26.74.2.1108016](https://doi.org/10.46904/eea.26.74.2.1108016)).
 
 ---
 
-## Hardware & Circuit Summary
+## Live Video Demonstration
 
-The analog front-end (AFE) conditions microvolt-level ocular biopotentials through dedicated analog stages before digitization:
+Watch the live hardware demonstration showing the clean analog EOG signal responding in real time to eye movements (looking up and blinking) on the oscilloscope before any digital software processing:
+
+[![Watch Live Demo](https://img.shields.io/badge/Watch%20on%20YouTube-Live%20Analog%20EOG%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/ZO9QT6c9rzA)
+
+> **[Click here to watch the demonstration on YouTube](https://youtu.be/ZO9QT6c9rzA)**  
+> *Demonstrated by Abdulaziz Hatem — showing the real-time analog signal cleanly capturing blinks and upward gaze on the oscilloscope.*
+
+---
+
+## Hardware & Circuit Overview
+
+Eye movements generate tiny microvolt electrical potentials on the skin around the eyes. Our analog circuit amplifies and cleans this signal so an Arduino microcontroller can read it.
 
 ```
-[ Ag/AgCl Electrodes ] ──► [ Stage 1: AD620 Pre-Amp (Gain = 495×, CMRR > 100 dB) ]
-                       ──► [ Stage 2: Active Bandpass 1.6–16 Hz (Inverting Gain = 10×) ]
-                       ──► [ Stage 3: Active Lowpass 16 Hz (Gain = 2×) ]
-                       ──► [ Stage 4: Variable Gain (2×–10×) & Level Shifter (0–5V) ]
-                       ──► [ Arduino Uno ADC (10-bit, fs = 250 Hz) ] ──► [ MATLAB DSP ]
+[ Electrodes on Face ]
+          │
+          ▼
+[ 1. Instrumentation Pre-Amp (AD620) ]    ──► Gain = 495×, high noise rejection
+          │
+          ▼
+[ 2. Active Band-Pass Filter (TL072) ]    ──► 1.6 Hz to 16 Hz (isolates eye signals, Gain = 10×)
+          │
+          ▼
+[ 3. Active Low-Pass Filter (TL072) ]     ──► 16 Hz cutoff (Gain = 2×, removes muscle tremor & hum)
+          │
+          ▼
+[ 4. Level Shifter & Variable Gain ]      ──► Shifts signal to 0–5V range for Arduino ADC
+          │
+          ▼
+[ Arduino Uno (ADC) ]                     ──► Samples at 250 Hz, streams over USB (115200 baud)
+          │
+          ▼
+[ MATLAB GUI & DSP ]                      ──► Real-time display, filtering, and speller/wheelchair control
 ```
 
-- **Instrumentation Pre-Amplifier**: AD620AN with external resistor $R_G = 100\,\Omega$ yields a fixed gain of $495\times$. High input impedance ($10\,\text{G}\Omega$) and high CMRR ($>100\,\text{dB}$) suppress common-mode noise.
-- **Active Bandpass Filter**: Second-order active bandpass ($1.6\,\text{Hz} - 16\,\text{Hz}$) using TL072/LM741 op-amps with $10\times$ inverting gain removes baseline DC drift and high-frequency EMG noise.
-- **Active Low-Pass Filter**: Additional low-pass stage at $f_c = 16\,\text{Hz}$ ($2\times$ gain) sharpens roll-off against residual powerline hum.
-- **Variable Gain & DC Level Shifter**: Trimmer potentiometer ($2\times - 10\times$) followed by a voltage divider DC level shifter centers the bipolar signal into the $0 - 5\,\text{V}$ unipolar window for the Arduino ADC.
-- **Subject Safety & Power**: Powered by two 9V batteries ($\pm 9\,\text{V}$, virtual ground), providing 100% galvanic isolation from the AC electrical grid.
-- **Electrode Placement**: Standard vertical channel using disposable Ag/AgCl pediatric gel electrodes:
-  - $(V+)$: Superior orbital rim (above eyebrow).
-  - $(V-)$: Inferior orbital rim (below lower eyelid).
-  - $(\text{REF})$: Forehead center (electrical ground).
+### Key Hardware Points
+- **Electrodes**: Small pediatric Ag/AgCl adhesive gel electrodes placed above the eyebrow ($V+$), below the eye ($V-$), and ground on the forehead.
+- **Amplification**: AD620 instrumentation amplifier with $R_G = 100\,\Omega$ ($495\times$ gain), followed by op-amp stages for a total gain up to $\approx 10,000\times$.
+- **Filtering**: Analog active bandpass ($1.6 - 16\text{ Hz}$) and low-pass ($16\text{ Hz}$) remove slow DC baseline drift, muscle (EMG) noise, and powerline hum.
+- **Safety**: Powered by two 9V batteries ($\pm 9\text{ V}$), completely isolating the user from mains electricity.
 
 ---
 
-## Hardware Schematics & Photos
+## Circuit Schematic & Setup Photos
 
-### Circuit Schematic
-Full CAD schematic layout developed in KiCad 9:
+### 1. Circuit Schematic
+The analog front-end schematic (designed in KiCad):
 ![EOG Circuit Schematic](assets/hardware/eog_circuit_schematic.png)
 
-### Electrode Montage on Subject
-Pediatric Ag/AgCl surface electrodes placed on a research participant for vertical EOG acquisition:
-![Electrode Placement Setup](assets/hardware/electrode_placement_setup.jpeg)
+### 2. Electrode Placement
+Placement of pediatric electrodes on the face for vertical EOG recording:
+![Electrode Placement](assets/hardware/electrode_placement_setup.jpeg)
 
-### Complete Testbench Setup
-Laboratory bench setup during live testing: breadboard analog circuit, dual 9V batteries, Arduino Uno, Hantek DSO5072P oscilloscope, and host laptop running real-time MATLAB acquisition:
-![Full Laboratory Test Setup](assets/hardware/full_test_setup.jpeg)
+### 3. Experimental Test Setup
+Our laboratory test bench showing the breadboard circuit, dual 9V batteries, Arduino Uno, Hantek DSO5072P oscilloscope, and laptop running real-time MATLAB acquisition:
+![Full Test Setup](assets/hardware/full_test_setup.jpeg)
 
 ---
 
-## Analog Validation & Video Demo
+## Signal Validation & Filtering
 
-### Powerline Mains Hum (Pre-Filtering)
-During initial testing directly after the AD620 pre-amplifier, the unconditioned signal exhibited significant 50 Hz powerline interference:
+### 50 Hz Mains Noise (Before Analog Filtering)
+At the pre-amplifier stage before active filtering, the raw signal picked up heavy 50 Hz electrical noise from the room's AC wiring:
 
 ![50 Hz Mains Interference](assets/oscilloscope/50hz_mains_interference.jpeg)  
-*Oscilloscope capture (400 ms/div, 500 mV/div) showing severe 50 Hz powerline hum riding on the raw signal prior to active filtering.*
+*Raw signal on the oscilloscope (400 ms/div, 500 mV/div) showing 50 Hz powerline hum riding on blink peaks before active filtering.*
 
-### Hardware Filtering & Live Demonstration
-Our active bandpass and low-pass stages completely clean this 50 Hz hum in the analog domain before digital sampling. While an isolated still photo of the filtered trace was not kept, the stable, noise-free analog waveform is visible on the oscilloscope screen in the bench photo above and is demonstrated live in the video below.
+Our active filter stages completely eliminated this 50 Hz hum directly in hardware. The clean analog waveform is visible on the oscilloscope screen in the bench photo above and is demonstrated live in our [YouTube Video](https://youtu.be/ZO9QT6c9rzA).
 
-[![Watch the EOG Live Demo](https://img.shields.io/badge/YouTube-Live%20Analog%20EOG%20Demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/ZO9QT6c9rzA)
+### Processed Signal in MATLAB
+Once digitized by the Arduino, MATLAB applies light digital smoothing (moving average) and baseline correction for clear peak detection:
 
-> **Live Video Demonstration**: [Watch Abdulaziz Hatem demonstrate the live analog EOG signal on YouTube](https://youtu.be/ZO9QT6c9rzA).  
-> The video shows the real-time analog signal responding cleanly to vertical eye movements and voluntary blinks on the oscilloscope before any microcontroller software filtering.
-
----
-
-## MATLAB DSP & Signal Quality
-
-The Arduino Uno streams 10-bit ADC samples at $250\,\text{Hz}$ ($115200\,\text{bps}$) to MATLAB, where lightweight DSP filters polish the waveform:
-1. **3-sample Moving Average**: Eliminates ADC quantization jitter.
-2. **150-sample Moving Average**: Tracks and subtracts baseline wander.
-3. **10th-Order Butterworth Notch Filter**: Targets residual 50 Hz interference.
-4. **7-sample Moving Average**: Delivers smooth peak detection for event discrimination.
-
-![Representative Clean Filtered EOG Waveform](assets/matlab_dsp/matlab_filtered_comparison.png)  
-*Filtered EOG waveform in MATLAB across experimental phases, demonstrating clear distinction between resting baseline, voluntary blinks, and gaze deflections.*
-
-- **High Signal-to-Noise Ratio**: Achieves a peak SNR of **32.5 dB** during voluntary blinks ($V_{pp} = 13.58\,\text{V}$ vs. baseline noise $0.39\,\text{V}$ on the display scale).
-- **Signal Power**: Signal power is $> 1,600\times$ higher than background resting noise, ensuring zero false triggers in assistive control applications.
+![Filtered EOG Waveform](assets/matlab_dsp/matlab_filtered_comparison.png)  
+*Clean, real-time EOG signal in MATLAB showing distinct peaks for blinks and eye movements.*
 
 ---
 
 ## Quick Start / How to Run
-<a id="how-to-run"></a>
 
 ### 1. Arduino Firmware
-- Connect the analog circuit output to pin `A0` of an Arduino Uno.
-- Open [`src/arduino/eog_acquisition.ino`](src/arduino/eog_acquisition.ino) (or [`src/arduino/eog_acquisition/eog_acquisition.ino`](src/arduino/eog_acquisition/eog_acquisition.ino)) in the Arduino IDE.
-- Select your board and port, then click **Upload** (baud rate: `115200`).
+1. Connect the analog circuit output to pin `A0` of an Arduino Uno.
+2. Open [`src/arduino/eog_acquisition.ino`](src/arduino/eog_acquisition.ino) in the Arduino IDE.
+3. Select your Arduino Uno board and COM port, then click **Upload** (Baud rate: `115200`).
 
-### 2. MATLAB Real-Time Acquisition & GUI
-- Open MATLAB (R2020b or later).
-- In [`src/matlab/eog_realtime_acquisition.m`](src/matlab/eog_realtime_acquisition.m), configure your Arduino COM port:
-  ```matlab
-  arduinoPort = 'COM3'; % Adjust to your system's serial port (e.g., 'COM3', 'COM7')
-  ```
-- Run the script to start live acquisition, real-time filtering, and the interactive assistive interface. *(Note: The HC-05 Bluetooth wheelchair connection is optional; if unattached, the software automatically runs in standalone acquisition and virtual keyboard mode).*
-
-### 3. Running Automated Tests
-The repository includes an automated DSP and finite-state machine (FSM) test suite:
-```matlab
-run('tests/test_eog_pipeline.m')
-```
-*Tests verify notch filter stability, ADC voltage scaling, streaming recursion, blink vs. gaze discrimination, Arabic keyboard mapping, and wheelchair FSM transitions (6/6 tests passing).*
-
----
-
-## Repository Structure
-
-```
-eog-acquisition-platform/
-├── README.md                                # Project documentation
-├── .gitignore                               # Git ignore rules
-├── src/
-│   ├── arduino/
-│   │   ├── eog_acquisition.ino              # Arduino sketch (250 Hz ADC biopotential acquisition)
-│   │   ├── eog_acquisition/
-│   │   │   └── eog_acquisition.ino          # Arduino IDE sketch format
-│   │   ├── wheelchair_controller.ino        # Assistive wheelchair robot firmware
-│   │   └── wheelchair_controller/
-│   │       └── wheelchair_controller.ino    # Arduino IDE sketch format
-│   └── matlab/
-│       ├── eog_realtime_acquisition.m       # Real-time serial acquisition, DSP filtering & GUI
-│       └── eog_signal_analysis.m            # Signal quality evaluation & statistical analysis
-├── tests/
-│   └── test_eog_pipeline.m                  # Automated DSP & FSM unit test suite
-└── assets/
-    ├── hardware/
-    │   ├── eog_circuit_schematic.png        # Analog front-end circuit schematic (KiCad)
-    │   ├── electrode_placement_setup.jpeg   # Subject electrode placement
-    │   └── full_test_setup.jpeg             # Laboratory bench test setup
-    ├── oscilloscope/
-    │   └── 50hz_mains_interference.jpeg     # Raw oscilloscope trace with 50 Hz mains noise
-    └── matlab_dsp/
-        └── matlab_filtered_comparison.png   # Filtered EOG waveform output in MATLAB
-```
+### 2. MATLAB Real-Time Acquisition
+1. Open MATLAB.
+2. In [`src/matlab/eog_realtime_acquisition.m`](src/matlab/eog_realtime_acquisition.m), set your COM port:
+   ```matlab
+   arduinoPort = 'COM3'; % Change to your Arduino COM port (e.g., 'COM3', 'COM7')
+   ```
+3. Run the script to view real-time eye movements, blinks, and test the virtual keyboard interface.  
+   *(Note: Wheelchair Bluetooth is optional — if not connected, the script runs in standalone acquisition mode).*
 
 ---
 
 ## Related Projects
 
-- **[eog-assistive-hci-keyboard](https://github.com/Abdulaziz-kh-Hatem/eog-assistive-hci-keyboard)**: Complete eye-controlled Arabic virtual speller and smart wheelchair navigation system based on this acquisition platform (Awarded 100% Graduation Distinction).
-- **[ecg-acquisition-platform](https://github.com/Abdulaziz-kh-Hatem/ecg-acquisition-platform)**: Low-cost ECG biopotential analog front-end and acquisition system for cardiovascular telemetry.
+- **[eog-assistive-hci-keyboard](https://github.com/Abdulaziz-kh-Hatem/eog-assistive-hci-keyboard)**: Our complete graduation project (awarded 100% distinction), which uses this hardware to drive an Arabic virtual speller and wheelchair.
+- **[ecg-acquisition-platform](https://github.com/Abdulaziz-kh-Hatem/ecg-acquisition-platform)**: Low-cost ECG acquisition platform for cardiac monitoring.
 
 ---
 
-## Citation
+## Published Paper & Citation
 
-If you use this circuit design, firmware, or signal processing pipeline, please cite our peer-reviewed journal paper:
+For complete theoretical derivations, circuit calculations, and clinical test statistics, please see our peer-reviewed paper:
+
+> Abdulaziz K.A. Hatem, Ahmed M.A.S. AlKadhi, Mohammed A.A. Qasem, Khaled A.M. Farhan, Nasr Kaid Ali AL-Audi,  
+> *"Design and Development of a Low-Cost Electronic Platform for Electrooculography Signals Acquisition"*,  
+> **Electrotehnică, Electronică, Automatică (EEA)**, 2026, vol. 74, no. 2, pp. 130–137. ISSN 1582-5175.  
+> **DOI**: [10.46904/eea.26.74.2.1108016](https://doi.org/10.46904/eea.26.74.2.1108016)
 
 ```bibtex
 @article{hatem2026eog,
@@ -179,5 +138,3 @@ If you use this circuit design, firmware, or signal processing pipeline, please 
   doi     = {10.46904/eea.26.74.2.1108016}
 }
 ```
-
-> Abdulaziz K.A. Hatem, Ahmed M.A.S. AlKadhi, Mohammed A.A. Qasem, Khaled A.M. Farhan, Nasr Kaid Ali AL-Audi, *"Design and Development of a Low-Cost Electronic Platform for Electrooculography Signals Acquisition"*, **Electrotehnică, Electronică, Automatică (EEA)**, 2026, vol. 74, no. 2, pp. 130–137. ISSN 1582-5175. DOI: [10.46904/eea.26.74.2.1108016](https://doi.org/10.46904/eea.26.74.2.1108016).

@@ -200,7 +200,8 @@ $$\text{SNR}\,(\text{dB}) = 10 \log_{10} \left( \frac{\sigma_{\text{signal}}^2}{
 The acquisition and signal processing pipeline consists of embedded firmware for the Arduino Uno and MATLAB processing scripts:
 
 ### 1. Embedded Firmware (`src/arduino/`)
-- **`eog_acquisition.ino`**: Configures the ATmega328P 10-bit ADC to sample the conditioned biopotential on analog channel `A0` at a deterministic $250\,\text{Hz}$ sampling frequency ($T = 4000\,\mu\text{s}$). Timing is governed via a non-blocking `micros()` loop to prevent cumulative timer jitter, streaming raw integer ADC counts ($0 - 1023$) over USB-serial at $115200\,\text{bps}$.
+- **`eog_acquisition/eog_acquisition.ino`**: Configures the ATmega328P 10-bit ADC to sample the conditioned biopotential on analog channel `A0` at a deterministic $250\,\text{Hz}$ sampling frequency ($T = 4000\,\mu\text{s}$). Timing is governed via a non-blocking `micros()` loop to prevent cumulative timer jitter, streaming raw integer ADC counts ($0 - 1023$) over USB-serial at $115200\,\text{bps}$.
+- **`wheelchair_controller/wheelchair_controller.ino`**: Embedded firmware for the 3D-printed prototype wheelchair robot. Receives directional navigation commands (`'1'` = Forward, `'2'` = Stop, `'3'` = Backward, `'4'` = Rotate) via HC-05 Bluetooth UART ($9600\,\text{bps}$) from the MATLAB EOG controller, drives dual DC geared motors via an L298N H-bridge with PWM speed control, and features a non-blocking active collision avoidance routine polling front ($40\,\text{cm}$) and rear ($30\,\text{cm}$) HC-SR04 ultrasonic sensors every $40\,\text{ms}$ with acoustic buzzer alerts.
 
 ### 2. Real-Time Acquisition & HMI (`src/matlab/eog_realtime_acquisition.m`)
 - **Real-Time DSP Chain**: Continuously ingests the serial stream, applies 3-sample moving average smoothing, subtracts dynamic baseline drift via a 150-sample moving average, filters $50\,\text{Hz}$ powerline mains interference using a 10th-order IIR Butterworth notch filter, and applies 7-sample post-smoothing.
@@ -213,7 +214,7 @@ The acquisition and signal processing pipeline consists of embedded firmware for
 - Evaluates the multi-phase experimental protocol (Baseline, Voluntary Blinks, Upward Gaze, Downward Gaze) to reproduce Table 1 statistical metrics ($V_{pp}$, variance, standard deviation, SNR) and publication figures (Figures 11–15).
 
 ### 4. Automated DSP Test Suite (`tests/test_eog_pipeline.m`)
-- Unit test suite verifying filter stability, $50\,\text{Hz}$ attenuation, ADC voltage scaling, streaming state recursion, and Arabic keyboard layout coverage in MATLAB R2024a.
+- Unit test suite verifying filter stability, $50\,\text{Hz}$ attenuation, ADC voltage scaling, streaming state recursion, dynamic blink/gaze pulse discrimination, wheelchair state transitions, and Arabic keyboard layout coverage in MATLAB R2024a.
 
 ---
 
@@ -225,14 +226,17 @@ eog-acquisition-platform/
 ├── .gitignore                               # Clean repository filter rules
 ├── src/
 │   ├── arduino/
-│   │   ├── eog_acquisition.ino              # Direct Arduino IDE sketch
-│   │   └── eog_acquisition/
-│   │       └── eog_acquisition.ino          # Standard sketch folder structure (250 Hz ADC sampling)
+│   │   ├── eog_acquisition.ino              # Direct sketch alias for EOG acquisition
+│   │   ├── eog_acquisition/
+│   │   │   └── eog_acquisition.ino          # Arduino IDE sketch (250 Hz ADC biopotential acquisition)
+│   │   ├── wheelchair_controller.ino        # Direct sketch alias for wheelchair robot
+│   │   └── wheelchair_controller/
+│   │       └── wheelchair_controller.ino    # Arduino IDE sketch (L298N motors, Bluetooth & collision avoidance)
 │   └── matlab/
 │       ├── eog_realtime_acquisition.m       # Real-time 250 Hz serial acquisition, DSP filtering & GUI
 │       └── eog_signal_analysis.m            # Experimental protocol validation & Table 1 reproduction
 ├── tests/
-│   └── test_eog_pipeline.m                  # DSP and FSM unit test suite
+│   └── test_eog_pipeline.m                  # DSP and FSM unit test suite (6 automated test cases)
 └── assets/
     ├── hardware/
     │   ├── proteus_circuit_schematic.png    # Figure 1: Published Proteus circuit schematic

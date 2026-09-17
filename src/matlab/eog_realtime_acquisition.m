@@ -105,6 +105,9 @@ end
 fprintf('Flushing input buffer...\n');
 flush(s);
 
+% Ensure serial and Bluetooth ports are reliably released upon exit or interrupt
+cleanupObj = onCleanup(@() cleanupResources(s, b_dev, bt_ok));
+
 measuredFs = 250; % Target sampling frequency (250 samples/second)
 fprintf('>> Acquisition sampling rate: %d Hz (T = 4.0 ms)\n', measuredFs);
 
@@ -516,7 +519,7 @@ while ishandle(hFig)
                             if strcmp(spellState, 'SECTOR')
                                 % Drill down into selected sector
                                 targetSec = latchedSec;
-                                sectorHistory = [sectorHistory, targetSec];
+                                sectorHistory = [sectorHistory, targetSec]; %#ok<AGROW>
                                 spellState = 'CHAR';
                                 currChar   = 1;
                                 currSec    = targetSec;
@@ -562,7 +565,7 @@ while ishandle(hFig)
                                     if ~isempty(sectorHistory)
                                         lastGroup = sectorHistory(end);
                                         sectorHistory(end) = [];
-                                        sectorHistory = [sectorHistory, lastGroup];
+                                        sectorHistory = [sectorHistory, lastGroup]; %#ok<AGROW>
                                         currSec = lastGroup;
                                         spellState = 'CHAR';
                                         currChar = 1;
@@ -603,16 +606,13 @@ while ishandle(hFig)
         catch
             continue;
         end
+    else
+        pause(0.001); % 1 ms pause prevents 100% CPU core spinning while awaiting next sample (fs = 250 Hz, T = 4 ms)
     end
 end
 
 %% Resource Cleanup
-if ~isempty(s)
-    clear s;
-end
-if bt_ok && ~isempty(b_dev)
-    clear b_dev;
-end
+cleanupResources(s, b_dev, bt_ok);
 fprintf('>> Acquisition terminated and ports closed cleanly.\n');
 
 %% Local Helper Functions
@@ -732,6 +732,26 @@ function sendWheelchairCommand(b_dev, bt_ok, cmdChar)
                 fprintf(b_dev, '%s', cmdChar);
             catch
             end
+        end
+    end
+end
+
+function cleanupResources(s, b_dev, bt_ok)
+    % Safely release serial port and Bluetooth hardware handles
+    if ~isempty(s)
+        try
+            if isvalid(s)
+                delete(s);
+            end
+        catch
+        end
+    end
+    if bt_ok && ~isempty(b_dev)
+        try
+            if isvalid(b_dev)
+                delete(b_dev);
+            end
+        catch
         end
     end
 end

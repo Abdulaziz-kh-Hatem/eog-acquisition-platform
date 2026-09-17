@@ -30,7 +30,7 @@ try
     assert(all(abs(poles) < 1.0), 'Filter is unstable: poles outside unit circle');
     
     % Verify attenuation at 50 Hz
-    [h, w] = freqz(b_notch, a_notch, [10, 50, 80], fs);
+    [h, ~] = freqz(b_notch, a_notch, [10, 50, 80], fs);
     mag10 = abs(h(1));
     mag50 = abs(h(2));
     mag80 = abs(h(3));
@@ -105,35 +105,44 @@ catch ex
     fprintf('FAILED: %s\n', ex.message);
 end
 
-%% Test 4: Blink vs Gaze Pulse Discrimination Logic
+%% Test 4: Dynamic Blink vs Gaze State Machine Execution
 totalTests = totalTests + 1;
-fprintf('Test 4: Blink vs sustained gaze classification... ');
+fprintf('Test 4: Dynamic blink vs sustained gaze state machine... ');
 try
     gazeDurationThresholdMs = 915.0;
+    strongBlinkMaxDurationSeconds = 1.5;
     samples_Gaze = round(fs * (gazeDurationThresholdMs / 1000.0)); % ~229 samples
+    samples_BlinkMax = round(fs * strongBlinkMaxDurationSeconds);     % ~375 samples
     EXECUTE_THRESHOLD = 80.0;
     RESET_THRESHOLD = -50.0;
+    SILENT_LATCH_VOLTAGE = 80.0;
     
-    % Simulate short voluntary blink (100 samples duration = 400 ms < samples_Gaze)
-    startCross = 100;
-    endCrossShort = 200; % duration = 100
-    durShort = endCrossShort - startCross;
-    if durShort < samples_Gaze
-        detectTypeBlink = 1; % Voluntary blink
-    else
-        detectTypeBlink = 2;
-    end
-    assert(detectTypeBlink == 1, 'Short pulse should be classified as voluntary blink');
-    
-    % Simulate sustained intentional gaze (300 samples duration = 1200 ms >= samples_Gaze)
-    endCrossLong = 400; % duration = 300
-    durLong = endCrossLong - startCross;
-    if durLong < samples_Gaze
-        detectTypeGaze = 1;
-    else
-        detectTypeGaze = 2; % Sustained gaze
-    end
-    assert(detectTypeGaze == 2, 'Long pulse should be classified as sustained gaze');
+    % Case A: Short Voluntary Blink (80 samples ~ 320 ms < 229 samples)
+    % Signal: 0V -> rises to +100V -> falls to -60V -> returns to 0V
+    sigBlink = [zeros(1, 20), linspace(0, 100, 30), linspace(100, -60, 50), linspace(-60, 0, 20)];
+    [detectTypeA, latchedSecA, latchedCharA] = simulateBlinkFSM( ...
+        sigBlink, EXECUTE_THRESHOLD, RESET_THRESHOLD, SILENT_LATCH_VOLTAGE, ...
+        samples_Gaze, samples_BlinkMax, 3, 2);
+    assert(detectTypeA == 1, sprintf('Expected detectType=1 (blink), got %d', detectTypeA));
+    assert(latchedSecA == 3, sprintf('Expected latchedSec=3, got %d', latchedSecA));
+    assert(latchedCharA == 2, sprintf('Expected latchedChar=2, got %d', latchedCharA));
+
+    % Case B: Sustained Intentional Gaze (260 samples ~ 1040 ms > 229 samples)
+    % Signal: 0V -> rises to +90V -> holds high for 250 samples -> falls to -55V -> returns
+    sigGaze = [zeros(1, 20), linspace(0, 90, 10), 90 * ones(1, 240), linspace(90, -55, 10), linspace(-55, 0, 20)];
+    [detectTypeB, latchedSecB, latchedCharB] = simulateBlinkFSM( ...
+        sigGaze, EXECUTE_THRESHOLD, RESET_THRESHOLD, SILENT_LATCH_VOLTAGE, ...
+        samples_Gaze, samples_BlinkMax, 5, 4);
+    assert(detectTypeB == 2, sprintf('Expected detectType=2 (gaze), got %d', detectTypeB));
+    assert(latchedSecB == 5, sprintf('Expected latchedSec=5, got %d', latchedSecB));
+    assert(latchedCharB == 4, sprintf('Expected latchedChar=4, got %d', latchedCharB));
+
+    % Case C: Motion Artifact Exceeding samples_BlinkMax (> 375 samples without recovery)
+    sigArtifact = [zeros(1, 20), linspace(0, 95, 10), 95 * ones(1, 400)];
+    [detectTypeC, ~, ~] = simulateBlinkFSM( ...
+        sigArtifact, EXECUTE_THRESHOLD, RESET_THRESHOLD, SILENT_LATCH_VOLTAGE, ...
+        samples_Gaze, samples_BlinkMax, 1, 1);
+    assert(detectTypeC == 0, sprintf('Expected detectType=0 (rejected artifact), got %d', detectTypeC));
     
     fprintf('PASSED\n');
     passedTests = passedTests + 1;
@@ -166,6 +175,33 @@ catch ex
     fprintf('FAILED: %s\n', ex.message);
 end
 
+%% Test 6: Wheelchair Finite State Machine Directional Logic
+totalTests = totalTests + 1;
+fprintf('Test 6: Wheelchair FSM directional state transitions... ');
+try
+    % State transition unit tests for wheelchair control logic
+    % 1 blink from STOP -> FORWARD
+    assert(strcmp(wheelchairFSM('STOP', 1), 'FORWARD'), 'STOP + 1 blink should lead to FORWARD');
+    % 1 blink from FORWARD -> ROTATING
+    assert(strcmp(wheelchairFSM('FORWARD', 1), 'ROTATING'), 'FORWARD + 1 blink should lead to ROTATING');
+    % 1 blink from ROTATING -> FORWARD
+    assert(strcmp(wheelchairFSM('ROTATING', 1), 'FORWARD'), 'ROTATING + 1 blink should lead to FORWARD');
+    % 2 blinks from STOP -> ROTATING
+    assert(strcmp(wheelchairFSM('STOP', 2), 'ROTATING'), 'STOP + 2 blinks should lead to ROTATING');
+    % 2 blinks from FORWARD -> STOP
+    assert(strcmp(wheelchairFSM('FORWARD', 2), 'STOP'), 'FORWARD + 2 blinks should lead to STOP');
+    % 2 blinks from ROTATING -> STOP
+    assert(strcmp(wheelchairFSM('ROTATING', 2), 'STOP'), 'ROTATING + 2 blinks should lead to STOP');
+    % 3 blinks from any state -> BACKWARD
+    assert(strcmp(wheelchairFSM('STOP', 3), 'BACKWARD'), 'STOP + 3 blinks should lead to BACKWARD');
+    assert(strcmp(wheelchairFSM('FORWARD', 3), 'BACKWARD'), 'FORWARD + 3 blinks should lead to BACKWARD');
+
+    fprintf('PASSED\n');
+    passedTests = passedTests + 1;
+catch ex
+    fprintf('FAILED: %s\n', ex.message);
+end
+
 %% Summary Report
 fprintf('\n====================================================\n');
 fprintf('  Test Results: %d / %d Tests Passed (%.1f%%)\n', passedTests, totalTests, (passedTests/totalTests)*100);
@@ -175,4 +211,84 @@ if passedTests == totalTests
     fprintf('>> ALL DSP & LOGIC TESTS COMPLETED SUCCESSFULLY.\n');
 else
     error('Some unit tests failed.');
+end
+
+%% Local Test Helpers
+
+function [finalDetect, latchedSecOut, latchedCharOut] = simulateBlinkFSM( ...
+    stream, execThresh, resetThresh, silentLatchV, samplesGaze, samplesBlinkMax, initSec, initChar)
+
+    blinkState = 0;
+    startCross = 0;
+    prevVal = 0;
+    isSignalRising = false;
+    currSec = initSec;
+    currChar = initChar;
+    tempLatchedSec = currSec;
+    tempLatchedChar = currChar;
+    latchedSecOut = currSec;
+    latchedCharOut = currChar;
+    finalDetect = 0;
+
+    for count = 1:length(stream)
+        voltageFinal = stream(count);
+        detectType = 0;
+
+        if ~isnan(voltageFinal) && ~isnan(prevVal)
+            if voltageFinal > silentLatchV && ~isSignalRising
+                tempLatchedSec  = currSec;
+                tempLatchedChar = currChar;
+                isSignalRising  = true;
+            end
+
+            if blinkState == 0 && prevVal < execThresh && voltageFinal >= execThresh
+                blinkState     = 1;
+                startCross     = count;
+                latchedSecOut  = tempLatchedSec;
+                latchedCharOut = tempLatchedChar;
+            elseif blinkState == 1
+                if voltageFinal <= resetThresh
+                    dur = count - startCross;
+                    blinkState = 0;
+                    if dur < samplesGaze
+                        detectType = 1;
+                    else
+                        detectType = 2;
+                    end
+                elseif (count - startCross) > samplesBlinkMax
+                    blinkState = 0;
+                end
+            end
+
+            if voltageFinal < resetThresh
+                isSignalRising = false;
+            end
+        end
+        prevVal = voltageFinal;
+
+        if detectType > 0
+            finalDetect = detectType;
+        end
+    end
+end
+
+function nextState = wheelchairFSM(currentState, cmd)
+    nextState = currentState;
+    if cmd == 1
+        if strcmp(currentState, 'STOP') || strcmp(currentState, 'BACKWARD')
+            nextState = 'FORWARD';
+        elseif strcmp(currentState, 'FORWARD')
+            nextState = 'ROTATING';
+        elseif strcmp(currentState, 'ROTATING')
+            nextState = 'FORWARD';
+        end
+    elseif cmd == 2
+        if strcmp(currentState, 'STOP')
+            nextState = 'ROTATING';
+        else
+            nextState = 'STOP';
+        end
+    elseif cmd == 3
+        nextState = 'BACKWARD';
+    end
 end

@@ -76,7 +76,7 @@ Our laboratory test bench showing the breadboard circuit, dual 9V batteries, Ard
 ## Signal Validation & Filtering
 
 ### 50 Hz Mains Noise (Before Analog Filtering)
-At the pre-amplifier stage before active filtering, the raw signal picked up heavy 50 Hz electrical noise from the room's AC wiring:
+At the pre-amplifier stage, before active filtering, the raw signal contained significant 50 Hz powerline interference:
 
 ![50 Hz Mains Interference](assets/oscilloscope/50hz_mains_interference.jpeg)  
 *Raw signal on the oscilloscope (400 ms/div, 500 mV/div) showing 50 Hz powerline hum riding on blink peaks before active filtering.*

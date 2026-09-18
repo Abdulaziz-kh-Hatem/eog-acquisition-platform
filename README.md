@@ -111,7 +111,7 @@ Once digitized by the Arduino, MATLAB applies light digital smoothing (moving av
 
 ## Related Projects
 
-- **[eog-assistive-hci-keyboard](https://github.com/Abdulaziz-kh-Hatem/eog-assistive-hci-keyboard)**: Our complete graduation project (awarded 100% distinction), which uses this hardware to drive an Arabic virtual speller and wheelchair.
+- **[graduation-project](https://github.com/Abdulaziz-kh-Hatem/graduation-project)**: Our complete graduation project (awarded 100% distinction), which uses this hardware to drive an Arabic virtual speller and wheelchair.
 - **[ecg-acquisition-platform](https://github.com/Abdulaziz-kh-Hatem/ecg-acquisition-platform)**: Low-cost ECG acquisition platform for cardiac monitoring.
 
 ---
